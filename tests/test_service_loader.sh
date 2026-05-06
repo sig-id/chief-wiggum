@@ -614,6 +614,18 @@ test_builtin_pr_sync_runs_on_startup() {
     assert_equals "0" "$rc" "pr-sync should run on startup"
 }
 
+test_autofix_service_timeout_is_disabled() {
+    service_load "$WIGGUM_HOME/config/services.json"
+
+    local timeout
+    timeout=$(service_get_timeout "autofix")
+    assert_equals "0" "$timeout" "autofix is continuous and should not be killed by service timeout"
+
+    local schedule
+    schedule=$(service_get_schedule "autofix")
+    assert_output_contains "$schedule" "continuous" "autofix should remain a continuous service"
+}
+
 # =============================================================================
 # service_exists Tests
 # =============================================================================
@@ -755,6 +767,7 @@ run_test test_load_override_disables_service
 run_test test_builtin_defaults_loads_services
 run_test test_builtin_defaults_has_expected_services
 run_test test_builtin_pr_sync_runs_on_startup
+run_test test_autofix_service_timeout_is_disabled
 
 # service_exists tests
 run_test test_service_exists_returns_true

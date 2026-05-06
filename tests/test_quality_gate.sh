@@ -543,6 +543,45 @@ test_artifact_cleanup() {
         "old.bak should be cleaned up"
 }
 
+test_pass_publish_failure_resets_workspace_and_marks_fail() {
+    export WIGGUM_STEP_ID="quality-gate"
+    export _AGENT_START_EPOCH="6000001"
+
+    _load_quality_gate
+    _stub_md_agent "PASS"
+    _write_audit_report "$TEST_DIR/worker"
+
+    # Advance origin/main with a conflicting edit while the task branch remains
+    # based on the previous main commit.
+    git clone --quiet "$TEST_DIR/remote.git" "$TEST_DIR/upstream"
+    git -C "$TEST_DIR/upstream" config user.email "test@test.com"
+    git -C "$TEST_DIR/upstream" config user.name "Test"
+    echo "upstream-main-change" > "$TEST_DIR/upstream/file.txt"
+    git -C "$TEST_DIR/upstream" add -A
+    git -C "$TEST_DIR/upstream" commit -m "main update" --quiet --no-gpg-sign
+    git -C "$TEST_DIR/upstream" push --quiet origin main
+
+    echo "autofix-task-change" > "$TEST_DIR/worker/workspace/file.txt"
+
+    local run_rc=0
+    agent_run "$TEST_DIR/worker" "$TEST_DIR/project" || run_rc=$?
+    assert_equals "0" "$run_rc" "Publication failure should be represented in the result file"
+
+    local result
+    result=$(jq -r '.outputs.gate_result' "$TEST_DIR/worker/results/6000001-quality-gate-result.json")
+    assert_equals "FAIL" "$result" "Publish failure after PASS should rewrite result to FAIL"
+
+    local dirty_after
+    dirty_after=$(git -C "$TEST_DIR/worker/workspace" status --porcelain)
+    assert_equals "" "$dirty_after" "Workspace should be clean after publish failure"
+
+    local workspace_head main_head
+    workspace_head=$(git -C "$TEST_DIR/worker/workspace" rev-parse HEAD)
+    main_head=$(git -C "$TEST_DIR/worker/workspace" rev-parse origin/main)
+    assert_equals "$main_head" "$workspace_head" \
+        "Workspace should be reset to origin/main after publish failure"
+}
+
 # =============================================================================
 # Run all tests
 # =============================================================================
@@ -559,6 +598,7 @@ run_test test_resolve_cycle_audit_report_uses_verify_parent
 run_test test_autofix_reserve_deduplicates_same_audit
 run_test test_duplicate_audit_pass_skips_pr_creation
 run_test test_artifact_cleanup
+run_test test_pass_publish_failure_resets_workspace_and_marks_fail
 
 print_test_summary
 exit_with_test_result

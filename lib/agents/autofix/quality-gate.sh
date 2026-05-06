@@ -44,6 +44,7 @@ agent_run() {
     if [[ -n "$result_file" ]] && [[ -f "$result_file" ]]; then
         gate_result=$(jq -r '.outputs.gate_result // "FAIL"' "$result_file" 2>/dev/null)
     fi
+    gate_result="${gate_result:-FAIL}"
 
     if [[ "$gate_result" == "PASS" ]]; then
         if _handle_pass "$workspace" "$worker_dir" "$project_dir"; then
@@ -64,7 +65,10 @@ agent_run() {
             # Reset workspace to main so the next audit cycle starts clean
             _reset_workspace_to_main "$workspace" "$project_dir"
         else
-            log_warn "Quality gate PASS — push/PR failed, leaving workspace for inspection"
+            log_warn "Quality gate PASS — push/PR failed, marking cycle failed and resetting workspace"
+            agent_write_result "$worker_dir" "FAIL" '{"quality_gate_publish_failed":true}' \
+                '["quality gate publication failed after PASS"]' || true
+            _reset_workspace_to_main "$workspace" "$project_dir"
         fi
     else
         log "Quality gate FAIL — discarding changes"
