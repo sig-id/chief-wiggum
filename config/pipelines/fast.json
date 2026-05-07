@@ -1,5 +1,5 @@
 {
-  "name": "default",
+  "name": "fast",
   "steps": [
     {
       "id": "planning",
@@ -20,42 +20,23 @@
       "readonly": true
     },
     {
-      "id": "audit",
-      "agent": "engineering.security-audit",
-      "max": 4,
-      "readonly": true,
-      "on_result": {
-        "FIX": {
-          "id": "audit-fix",
-          "agent": "engineering.security-fix",
-          "max": 2,
-          "commit_after": true
-        }
-      }
-    },
-    {
-      "id": "test",
-      "agent": "engineering.test-coverage",
-      "max": 4,
+      "id": "master-followup",
+      "agent": "engineering.master-followup",
+      "max": 3,
       "commit_after": true,
       "on_result": {
         "FIX": {
-          "id": "test-fix",
+          "id": "master-followup-fix",
           "agent": "engineering.generic-fix",
-          "max": 2,
+          "max": 3,
           "commit_after": true
         }
       }
-    },
-    {
-      "id": "docs",
-      "agent": "general.documentation-writer",
-      "commit_after": true
     },
     {
       "id": "validation",
       "agent": "engineering.validation-review",
-      "max": 4,
+      "max": 6,
       "readonly": true,
       "on_result": {
         "FIX": {
@@ -64,7 +45,7 @@
           "max": 2,
           "commit_after": true,
           "on_result": {
-            "PASS": { "jump": "test" },
+            "PASS": { "jump": "master-followup" },
             "FIX": { "jump": "execution" }
           }
         }

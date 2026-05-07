@@ -1,0 +1,13 @@
+{
+  "name": "meta-codebase-health",
+  "description": "Scan codebase for quality issues and refactoring opportunities",
+  "steps": [
+    {
+      "id": "scan",
+      "agent": "system.codebase-health",
+      "max": 1,
+      "commit_after": true,
+      "config": { "max_iterations": 1, "max_turns": 40 }
+    }
+  ]
+}

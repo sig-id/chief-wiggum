@@ -1,0 +1,56 @@
+{
+  "name": "autofix",
+  "description": "Autonomous code improvement: randomly audit, verify, fix, and quality-gate in a loop",
+  "steps": [
+    {
+      "id": "random-audit",
+      "agent": "autofix.random-audit",
+      "max": 50,
+      "readonly": true,
+      "config": { "max_iterations": 5, "max_turns": 120 },
+      "on_result": {
+        "PASS": {
+          "jump": "random-audit"
+        },
+        "UNKNOWN": {
+          "jump": "random-audit"
+        }
+      }
+    },
+    {
+      "id": "verify-fix",
+      "agent": "autofix.verify-fix",
+      "max": 100,
+      "commit_after": false,
+      "config": { "max_iterations": 20, "max_turns": 60, "supervisor_interval": 2 },
+      "on_result": {
+        "FAIL": {
+          "jump": "random-audit"
+        },
+        "SKIP": {
+          "jump": "random-audit"
+        },
+        "UNKNOWN": {
+          "jump": "random-audit"
+        }
+      }
+    },
+    {
+      "id": "quality-gate",
+      "agent": "autofix.quality-gate",
+      "max": 100,
+      "config": { "max_iterations": 3, "max_turns": 120 },
+      "on_result": {
+        "PASS": {
+          "jump": "random-audit"
+        },
+        "FAIL": {
+          "jump": "random-audit"
+        },
+        "UNKNOWN": {
+          "jump": "random-audit"
+        }
+      }
+    }
+  ]
+}

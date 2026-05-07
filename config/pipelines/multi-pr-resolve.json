@@ -1,0 +1,71 @@
+{
+  "name": "multi-pr-resolve",
+  "description": "Resolve conflicts with main, run tests, commit, and merge PR (for batch coordination)",
+  "steps": [
+    {
+      "id": "sync-main",
+      "agent": "workflow.git-sync-main",
+      "on_result": {
+        "PASS": {"jump": "commit-push"}
+      }
+    },
+    {
+      "id": "resolve",
+      "agent": "workflow.git-conflict-resolver",
+      "max": 3,
+      "commit_after": true,
+      "on_result": {
+        "FAIL": {
+          "id": "resolve-signal-failed",
+          "agent": "workflow.batch-signal-failed",
+          "on_result": {"PASS": {"jump": "abort"}}
+        }
+      }
+    },
+    {
+      "id": "test-run",
+      "agent": "engineering.test-runner",
+      "max": 3,
+      "readonly": true,
+      "on_result": {
+        "FIX": {
+          "id": "test-fix",
+          "agent": "engineering.generic-fix",
+          "max": 2,
+          "commit_after": true
+        },
+        "FAIL": {
+          "id": "test-run-signal-failed",
+          "agent": "workflow.batch-signal-failed",
+          "on_result": {"PASS": {"jump": "abort"}}
+        }
+      }
+    },
+    {
+      "id": "commit-push",
+      "agent": "workflow.git-commit-push",
+      "on_result": {
+        "FAIL": {
+          "id": "commit-push-signal-failed",
+          "agent": "workflow.batch-signal-failed",
+          "on_result": {"PASS": {"jump": "abort"}}
+        }
+      }
+    },
+    {
+      "id": "merge",
+      "agent": "workflow.pr-merge",
+      "on_result": {
+        "FAIL": {
+          "id": "merge-signal-failed",
+          "agent": "workflow.batch-signal-failed",
+          "on_result": {"PASS": {"jump": "abort"}}
+        }
+      }
+    },
+    {
+      "id": "signal-done",
+      "agent": "workflow.batch-signal-done"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "meta-self-improve",
+  "description": "Analyze past performance and improve project guidance",
+  "steps": [
+    {
+      "id": "improve",
+      "agent": "system.self-improver",
+      "max": 1,
+      "commit_after": true,
+      "config": { "max_iterations": 1, "max_turns": 50 }
+    }
+  ]
+}

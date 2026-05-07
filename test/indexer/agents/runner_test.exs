@@ -406,6 +406,109 @@ defmodule Indexer.Agents.RunnerTest do
     assert second["user"] =~ "draft summary"
   end
 
+  test "enriches copied v1 prompt context and resolves worker-local required paths" do
+    root = tmp_dir()
+    worker_dir = Path.join(root, ".indexer/worktrees/worker-TASK-001-1")
+    workspace = Path.join(worker_dir, "workspace")
+    agents_dir = Path.join(root, "agents")
+
+    File.mkdir_p!(workspace)
+    File.mkdir_p!(agents_dir)
+    File.write!(Path.join(worker_dir, "prd.md"), "# PRD\n")
+
+    File.write!(Path.join(agents_dir, "context.md"), """
+    ---
+    type: test.context
+    description: Context enrichment agent
+    required_paths: [workspace, prd.md]
+    valid_results: [PASS, FAIL]
+    mode: once
+    readonly: true
+    ---
+
+    <INDEXER_SYSTEM_PROMPT>
+    workspace={{workspace}}
+    worker_dir={{worker_dir}}
+    task_id={{task_id}}
+    indexer_dir={{indexer_dir}}
+    run_id={{run_id}}
+    prev_iteration={{prev_iteration}}
+    plan_file={{plan_file}}
+    restrictions={{git_restrictions}}
+    </INDEXER_SYSTEM_PROMPT>
+
+    <INDEXER_USER_PROMPT>
+    {{context_section}}
+    </INDEXER_USER_PROMPT>
+    """)
+
+    registry =
+      Registry.from_map(
+        %{
+          defaults: %{
+            runtime: %{adapter: "codex", mode: "cli_text"},
+            result_mappings: %{
+              PASS: %{status: "success", exit_code: 0, default_jump: "next"},
+              FAIL: %{status: "failure", exit_code: 10, default_jump: "abort"}
+            }
+          },
+          agents: %{"test.context": %{definition: "agents/context.md"}}
+        },
+        root
+      )
+
+    parent = self()
+
+    runtime_runner = fn _root, invocation, _opts ->
+      send(parent, {:invocation, invocation})
+
+      {:ok,
+       %{
+         session: session(text: "<result>PASS</result>"),
+         text: "<result>PASS</result>",
+         events: []
+       }}
+    end
+
+    context = %{
+      "pipeline_run_id" => "pipeline-1",
+      "step_id" => "planning",
+      "worker" => %{
+        "id" => "worker-TASK-001-1",
+        "worker_dir" => worker_dir,
+        "workspace_path" => workspace,
+        "work_item_id" => "TASK-001"
+      },
+      "work_item" => %{"id" => "TASK-001", "title" => "Build v2"}
+    }
+
+    assert {:ok, output} =
+             Runner.run(root, "test.context", context,
+               registry: registry,
+               runtime_runner: runtime_runner
+             )
+
+    assert output["outputs"]["gate_result"] == "PASS"
+
+    assert_received {:invocation, invocation}
+    system = invocation.objective["system"]
+    user = invocation.objective["user"]
+
+    assert invocation.workspace_path == workspace
+    assert invocation.context["worker_dir"] == worker_dir
+    assert invocation.context["task_id"] == "TASK-001"
+    assert system =~ "workspace=#{workspace}"
+    assert system =~ "worker_dir=#{worker_dir}"
+    assert system =~ "task_id=TASK-001"
+    assert system =~ "indexer_dir=#{Path.join(root, ".indexer")}"
+    assert system =~ "run_id=pipeline-1"
+    assert system =~ "prev_iteration=-1"
+    assert system =~ "plan_file=#{Path.join([root, ".indexer", "plans", "TASK-001.md"])}"
+    assert system =~ "Treat #{workspace} as read-only"
+    assert user =~ "# Work Item"
+    assert user =~ "- Title: Build v2"
+  end
+
   defp registry do
     Registry.from_map(%{
       defaults: %{

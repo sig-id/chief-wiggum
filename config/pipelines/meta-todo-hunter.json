@@ -1,0 +1,13 @@
+{
+  "name": "meta-todo-hunter",
+  "description": "Find and address TODO/FIXME items in codebase",
+  "steps": [
+    {
+      "id": "hunt",
+      "agent": "system.todo-hunter",
+      "max": 1,
+      "commit_after": true,
+      "config": { "max_iterations": 1, "max_turns": 40 }
+    }
+  ]
+}

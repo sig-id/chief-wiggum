@@ -1,64 +1,283 @@
 {
+  "agents": {
+    "autofix.quality-gate": {
+      "definition": "agents/autofix/quality-gate.md",
+      "deterministic_extensions": ["agents/autofix/quality-gate.sh"]
+    },
+    "autofix.random-audit": {
+      "definition": "agents/autofix/random-audit.md"
+    },
+    "autofix.verify-fix": {
+      "definition": "agents/autofix/verify-fix.md"
+    },
+    "engineering.code-review": {
+      "definition": "agents/engineering/code-review.md"
+    },
+    "engineering.generic-fix": {
+      "definition": "agents/engineering/generic-fix.md"
+    },
+    "engineering.git-conflict-resolver": {
+      "capabilities": ["deterministic", "legacy_shell_port_required"],
+      "description": "Legacy deterministic shell agent copied from v1 for v2 porting",
+      "deterministic_extensions": ["agents/engineering/git-conflict-resolver.sh"],
+      "mode": "once",
+      "required_paths": ["workspace"],
+      "runtime": {
+        "adapter": "custom",
+        "mode": "cli_text"
+      },
+      "valid_results": ["PASS", "FAIL", "FIX", "SKIP"]
+    },
+    "engineering.intent-distill": {
+      "capabilities": ["deterministic", "legacy_shell_port_required"],
+      "description": "Legacy deterministic shell agent copied from v1 for v2 porting",
+      "deterministic_extensions": ["agents/engineering/intent-distill.sh"],
+      "mode": "once",
+      "required_paths": ["workspace"],
+      "runtime": {
+        "adapter": "custom",
+        "mode": "cli_text"
+      },
+      "valid_results": ["PASS", "FAIL", "FIX", "SKIP"]
+    },
+    "engineering.master-followup": {
+      "definition": "agents/engineering/master-followup.md"
+    },
+    "engineering.pr-comment-fix": {
+      "capabilities": ["deterministic", "legacy_shell_port_required"],
+      "description": "Legacy deterministic shell agent copied from v1 for v2 porting",
+      "deterministic_extensions": ["agents/engineering/pr-comment-fix.sh"],
+      "mode": "once",
+      "required_paths": ["workspace"],
+      "runtime": {
+        "adapter": "custom",
+        "mode": "cli_text"
+      },
+      "valid_results": ["PASS", "FAIL", "FIX", "SKIP"]
+    },
+    "engineering.security-audit": {
+      "definition": "agents/engineering/security-audit.md"
+    },
+    "engineering.security-fix": {
+      "definition": "agents/engineering/security-fix.md"
+    },
+    "engineering.software-engineer": {
+      "definition": "agents/engineering/software-engineer.md"
+    },
+    "engineering.test-coverage": {
+      "definition": "agents/engineering/test-coverage.md"
+    },
+    "engineering.test-runner": {
+      "definition": "agents/engineering/test-runner.md"
+    },
+    "engineering.validation-review": {
+      "definition": "agents/engineering/validation-review.md"
+    },
+    "general.documentation-writer": {
+      "definition": "agents/general/documentation-writer.md"
+    },
+    "general.domain-expert": {
+      "definition": "agents/general/domain-expert.md"
+    },
+    "general.task-summarizer": {
+      "definition": "agents/general/task-summarizer.md"
+    },
+    "product.plan-mode": {
+      "definition": "agents/product/plan-mode.md"
+    },
+    "product.system-architect": {
+      "definition": "agents/product/system-architect.md"
+    },
+    "redteam.exploit-validation": {
+      "definition": "agents/redteam/exploit-validation.md"
+    },
+    "redteam.recon": {
+      "definition": "agents/redteam/recon.md"
+    },
+    "redteam.remediate": {
+      "definition": "agents/redteam/remediate.md"
+    },
+    "redteam.report": {
+      "definition": "agents/redteam/report.md"
+    },
+    "redteam.vuln-analysis": {
+      "definition": "agents/redteam/vuln-analysis.md"
+    },
+    "system.codebase-health": {
+      "definition": "agents/system/codebase-health.md"
+    },
+    "system.failure-resolver": {
+      "definition": "agents/system/failure-resolver.md"
+    },
+    "system.failure-summarizer": {
+      "definition": "agents/system/failure-summarizer.md"
+    },
+    "system.memory-analyst": {
+      "definition": "agents/system/memory-analyst.md"
+    },
+    "system.resume-decide": {
+      "capabilities": ["deterministic", "legacy_shell_port_required"],
+      "description": "Legacy deterministic shell agent copied from v1 for v2 porting",
+      "deterministic_extensions": ["agents/system/resume-decide.sh"],
+      "mode": "once",
+      "required_paths": ["workspace"],
+      "runtime": {
+        "adapter": "custom",
+        "mode": "cli_text"
+      },
+      "valid_results": ["PASS", "FAIL", "FIX", "SKIP"]
+    },
+    "system.self-improver": {
+      "definition": "agents/system/self-improver.md"
+    },
+    "system.task-worker": {
+      "capabilities": ["deterministic", "legacy_shell_port_required"],
+      "description": "Legacy deterministic shell agent copied from v1 for v2 porting",
+      "deterministic_extensions": ["agents/system/task-worker.sh"],
+      "mode": "once",
+      "required_paths": ["workspace"],
+      "runtime": {
+        "adapter": "custom",
+        "mode": "cli_text"
+      },
+      "valid_results": ["PASS", "FAIL", "FIX", "SKIP"]
+    },
+    "system.todo-hunter": {
+      "definition": "agents/system/todo-hunter.md"
+    },
+    "workflow.batch-signal-done": {
+      "capabilities": ["deterministic", "legacy_shell_port_required"],
+      "description": "Legacy deterministic shell agent copied from v1 for v2 porting",
+      "deterministic_extensions": ["agents/workflow/batch-signal-done.sh"],
+      "mode": "once",
+      "required_paths": ["workspace"],
+      "runtime": {
+        "adapter": "custom",
+        "mode": "cli_text"
+      },
+      "valid_results": ["PASS", "FAIL", "FIX", "SKIP"]
+    },
+    "workflow.batch-signal-failed": {
+      "capabilities": ["deterministic", "legacy_shell_port_required"],
+      "description": "Legacy deterministic shell agent copied from v1 for v2 porting",
+      "deterministic_extensions": ["agents/workflow/batch-signal-failed.sh"],
+      "mode": "once",
+      "required_paths": ["workspace"],
+      "runtime": {
+        "adapter": "custom",
+        "mode": "cli_text"
+      },
+      "valid_results": ["PASS", "FAIL", "FIX", "SKIP"]
+    },
+    "workflow.batch-wait-turn": {
+      "capabilities": ["deterministic", "legacy_shell_port_required"],
+      "description": "Legacy deterministic shell agent copied from v1 for v2 porting",
+      "deterministic_extensions": ["agents/workflow/batch-wait-turn.sh"],
+      "mode": "once",
+      "required_paths": ["workspace"],
+      "runtime": {
+        "adapter": "custom",
+        "mode": "cli_text"
+      },
+      "valid_results": ["PASS", "FAIL", "FIX", "SKIP"]
+    },
+    "workflow.git-commit-push": {
+      "capabilities": ["deterministic", "legacy_shell_port_required"],
+      "description": "Legacy deterministic shell agent copied from v1 for v2 porting",
+      "deterministic_extensions": ["agents/workflow/git-commit-push.sh"],
+      "mode": "once",
+      "required_paths": ["workspace"],
+      "runtime": {
+        "adapter": "custom",
+        "mode": "cli_text"
+      },
+      "valid_results": ["PASS", "FAIL", "FIX", "SKIP"]
+    },
+    "workflow.git-conflict-resolver": {
+      "capabilities": ["deterministic", "legacy_shell_port_required"],
+      "description": "Legacy deterministic shell agent copied from v1 for v2 porting",
+      "deterministic_extensions": ["agents/workflow/git-conflict-resolver.sh"],
+      "mode": "once",
+      "required_paths": ["workspace"],
+      "runtime": {
+        "adapter": "custom",
+        "mode": "cli_text"
+      },
+      "valid_results": ["PASS", "FAIL", "FIX", "SKIP"]
+    },
+    "workflow.git-sync-main": {
+      "capabilities": ["deterministic", "legacy_shell_port_required"],
+      "description": "Legacy deterministic shell agent copied from v1 for v2 porting",
+      "deterministic_extensions": ["agents/workflow/git-sync-main.sh"],
+      "mode": "once",
+      "required_paths": ["workspace"],
+      "runtime": {
+        "adapter": "custom",
+        "mode": "cli_text"
+      },
+      "valid_results": ["PASS", "FAIL", "FIX", "SKIP"]
+    },
+    "workflow.multi-pr-planner": {
+      "capabilities": ["deterministic", "legacy_shell_port_required"],
+      "description": "Legacy deterministic shell agent copied from v1 for v2 porting",
+      "deterministic_extensions": ["agents/workflow/multi-pr-planner.sh"],
+      "mode": "once",
+      "required_paths": ["workspace"],
+      "runtime": {
+        "adapter": "custom",
+        "mode": "cli_text"
+      },
+      "valid_results": ["PASS", "FAIL", "FIX", "SKIP"]
+    },
+    "workflow.pr-merge": {
+      "capabilities": ["deterministic", "legacy_shell_port_required"],
+      "description": "Legacy deterministic shell agent copied from v1 for v2 porting",
+      "deterministic_extensions": ["agents/workflow/pr-merge.sh"],
+      "mode": "once",
+      "required_paths": ["workspace"],
+      "runtime": {
+        "adapter": "custom",
+        "mode": "cli_text"
+      },
+      "valid_results": ["PASS", "FAIL", "FIX", "SKIP"]
+    }
+  },
   "defaults": {
     "description": "Configured Indexer agent",
-    "required_paths": ["workspace"],
     "max_iterations": 20,
     "max_turns": 50,
-    "timeout_seconds": 10800,
+    "required_paths": ["workspace"],
+    "result_mappings": {
+      "FAIL": {
+        "default_jump": "abort",
+        "exit_code": 10,
+        "status": "failure"
+      },
+      "FIX": {
+        "default_jump": "prev",
+        "exit_code": 0,
+        "status": "partial"
+      },
+      "PASS": {
+        "default_jump": "next",
+        "exit_code": 0,
+        "status": "success"
+      },
+      "SKIP": {
+        "default_jump": "next",
+        "exit_code": 0,
+        "status": "success"
+      },
+      "UNKNOWN": {
+        "default_jump": "self",
+        "exit_code": 1,
+        "status": "unknown"
+      }
+    },
     "runtime": {
       "adapter": "codex",
       "mode": "app_server"
     },
-    "result_mappings": {
-      "PASS": { "status": "success", "exit_code": 0, "default_jump": "next" },
-      "FAIL": { "status": "failure", "exit_code": 10, "default_jump": "abort" },
-      "FIX": { "status": "partial", "exit_code": 0, "default_jump": "prev" },
-      "SKIP": { "status": "success", "exit_code": 0, "default_jump": "next" },
-      "UNKNOWN": { "status": "unknown", "exit_code": 1, "default_jump": "self" }
-    }
-  },
-  "agents": {
-    "product.plan-mode": {
-      "mode": "ralph_loop",
-      "readonly": true,
-      "valid_results": ["PASS", "FAIL"]
-    },
-    "engineering.software-engineer": {
-      "mode": "ralph_loop",
-      "valid_results": ["PASS", "FAIL"],
-      "supervisor_interval": 2
-    },
-    "general.task-summarizer": {
-      "mode": "resume",
-      "session_from": "parent",
-      "readonly": true,
-      "valid_results": ["PASS", "SKIP"]
-    },
-    "engineering.security-audit": {
-      "mode": "ralph_loop",
-      "readonly": true,
-      "valid_results": ["PASS", "FIX", "FAIL"]
-    },
-    "engineering.security-fix": {
-      "mode": "ralph_loop",
-      "valid_results": ["PASS", "FIX", "FAIL"]
-    },
-    "engineering.test-coverage": {
-      "mode": "ralph_loop",
-      "valid_results": ["PASS", "FIX", "FAIL", "SKIP"]
-    },
-    "engineering.generic-fix": {
-      "mode": "ralph_loop",
-      "valid_results": ["PASS", "FIX", "FAIL"]
-    },
-    "general.documentation-writer": {
-      "mode": "once",
-      "valid_results": ["PASS", "SKIP"]
-    },
-    "engineering.validation-review": {
-      "mode": "ralph_loop",
-      "readonly": true,
-      "valid_results": ["PASS", "FAIL"]
-    }
+    "timeout_seconds": 10800
   }
 }

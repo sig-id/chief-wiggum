@@ -1,0 +1,12 @@
+{
+  "name": "intent-distill",
+  "description": "Distill codebase patterns into Intent DSL specifications",
+  "steps": [
+    {
+      "id": "distill",
+      "agent": "engineering.intent-distill",
+      "max": 2,
+      "readonly": true
+    }
+  ]
+}

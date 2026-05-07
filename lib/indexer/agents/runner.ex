@@ -50,7 +50,11 @@ defmodule Indexer.Agents.Runner do
   defp execute_resolved(project_root, resolved, context, opts) do
     agent_run_id = new_agent_run_id()
     started_at = timestamp()
-    context = Map.put(context, "agent_run_id", agent_run_id)
+
+    context =
+      context
+      |> Map.put("agent_run_id", agent_run_id)
+      |> enrich_context(project_root, resolved)
 
     append_agent_event(project_root, "agent.started", agent_run_id, %{
       "agent_type" => resolved.type,
@@ -656,6 +660,37 @@ defmodule Indexer.Agents.Runner do
     }
   end
 
+  defp enrich_context(context, project_root, resolved) do
+    project_root = Path.expand(project_root)
+    indexer_dir = Indexer.state_dir(project_root)
+    worker_dir = worker_dir_path(project_root, context)
+    workspace = workspace_path(project_root, context)
+    work_item_id = work_item_id(context)
+    task_id = Map.get(context, "task_id") || work_item_id || "TASK-UNKNOWN"
+    plan_file = plan_file_path(project_root, context, resolved, task_id)
+    output_dir = output_dir_path(project_root, context, resolved)
+
+    context
+    |> put_default("project_root", project_root)
+    |> put_default("project_dir", project_root)
+    |> put_default("indexer_dir", indexer_dir)
+    |> put_default("control_branch", Indexer.control_branch())
+    |> put_default("workspace", workspace)
+    |> put_default("worker_dir", worker_dir)
+    |> put_default("work_item_id", work_item_id)
+    |> put_default("task_id", task_id)
+    |> put_default("run_id", Map.get(context, "pipeline_run_id"))
+    |> put_default("session_id", Map.get(context, "runtime_session_id"))
+    |> put_default("iteration", 0)
+    |> put_default("prev_iteration", Map.get(context, "previous_iteration", -1))
+    |> put_default("plan_file", plan_file)
+    |> put_default("output_dir", output_dir)
+    |> put_default("git_restrictions", git_restrictions(resolved, workspace))
+    |> put_default("context_section", context_section(context))
+    |> put_default("context_updates", context_updates(context))
+    |> put_default("plan_section", plan_section(plan_file))
+  end
+
   defp validate_required_paths(project_root, definition, context) do
     missing =
       definition.required_paths
@@ -674,18 +709,260 @@ defmodule Indexer.Agents.Runner do
   defp resolve_required_path(project_root, _context, "project_dir"), do: project_root
   defp resolve_required_path(project_root, _context, "project_root"), do: project_root
 
-  defp resolve_required_path(project_root, _context, path) do
-    if Path.type(path) == :absolute, do: path, else: Path.join(project_root, path)
+  defp resolve_required_path(project_root, context, path) do
+    rendered =
+      path
+      |> Indexer.Agents.Markdown.render_template(context)
+      |> case do
+        "" -> path
+        rendered -> rendered
+      end
+
+    case rendered do
+      "prd.md" ->
+        worker_file_or_project_root(project_root, context, "prd.md")
+
+      "worker.log" ->
+        worker_file_or_project_root(project_root, context, "worker.log")
+
+      rendered ->
+        if Path.type(rendered) == :absolute, do: rendered, else: Path.join(project_root, rendered)
+    end
   end
 
   defp workspace_path(project_root, context) do
-    Map.get(context, "workspace") || Map.get(context, "project_root") || project_root
+    workspace_from_context(context) ||
+      Map.get(context, "workspace_path") ||
+      nested_get(context, ["worker", "workspace_path"]) ||
+      worker_workspace_path(project_root, context) ||
+      Map.get(context, "project_root") ||
+      project_root
   end
 
-  defp worker_id(context), do: Map.get(context, "worker_id") || get_in(context, ["worker", "id"])
+  defp workspace_from_context(context) do
+    case Map.get(context, "workspace") do
+      workspace when is_binary(workspace) and workspace != "" -> workspace
+      %{} = workspace -> Map.get(workspace, "path")
+      _other -> nil
+    end
+  end
+
+  defp worker_workspace_path(project_root, context) do
+    case worker_dir_path(project_root, context) do
+      nil -> nil
+      worker_dir -> Path.join(worker_dir, "workspace")
+    end
+  end
+
+  defp worker_dir_path(project_root, context) do
+    Map.get(context, "worker_dir") ||
+      nested_get(context, ["worker", "worker_dir"]) ||
+      nested_get(context, ["worker", "dir"]) ||
+      nested_get(context, ["worker", "path"]) ||
+      default_worker_dir(project_root, worker_id(context))
+  end
+
+  defp default_worker_dir(_project_root, nil), do: nil
+
+  defp default_worker_dir(project_root, worker_id) do
+    project_root
+    |> Indexer.state_dir()
+    |> Path.join("worktrees")
+    |> Path.join(worker_id)
+  end
+
+  defp worker_file_or_project_root(project_root, context, filename) do
+    path_key = path_context_key(filename)
+
+    cond do
+      present_string?(Map.get(context, path_key)) ->
+        Map.get(context, path_key)
+
+      present_string?(worker_dir_path(project_root, context)) ->
+        Path.join(worker_dir_path(project_root, context), filename)
+
+      true ->
+        Path.join(project_root, filename)
+    end
+  end
+
+  defp path_context_key("worker.log"), do: "worker_log_path"
+
+  defp path_context_key(filename) do
+    filename
+    |> Path.rootname()
+    |> String.replace(~r/[^A-Za-z0-9]+/, "_")
+    |> Kernel.<>("_path")
+  end
+
+  defp plan_file_path(project_root, context, resolved, task_id) do
+    explicit =
+      Map.get(context, "plan_file") ||
+        get_in(context, ["work_item", "plan_file"]) ||
+        get_in(context, ["worker", "plan_file"])
+
+    cond do
+      present_string?(explicit) ->
+        explicit
+
+      present_string?(resolved.definition.plan_file) and
+          resolved.definition.plan_file != "{{plan_file}}" ->
+        Indexer.Agents.Markdown.render_template(resolved.definition.plan_file, context)
+
+      true ->
+        project_root
+        |> Indexer.state_dir()
+        |> Path.join("plans")
+        |> Path.join("#{task_id}.md")
+    end
+  end
+
+  defp output_dir_path(project_root, context, resolved) do
+    case Map.get(context, "output_dir") do
+      output_dir when is_binary(output_dir) and output_dir != "" ->
+        output_dir
+
+      _other ->
+        base =
+          case worker_dir_path(project_root, context) do
+            nil -> Path.join(Indexer.state_dir(project_root), "output")
+            worker_dir -> Path.join(worker_dir, "output")
+          end
+
+        Path.join(base, resolved.type)
+    end
+  end
+
+  defp git_restrictions(resolved, workspace) do
+    if resolved.definition.readonly do
+      """
+      - Treat #{workspace} as read-only.
+      - Do not edit files, stage changes, commit, merge, push, or mutate worktree state.
+      - Read-only inspection commands are allowed when they do not alter caches or generated files.
+      """
+    else
+      """
+      - Modify files only inside #{workspace}.
+      - Do not write outside the assigned workspace or Indexer state directory.
+      - Request durable side effects through pipeline results or configured effects unless this agent explicitly owns that workflow action.
+      """
+    end
+    |> String.trim()
+  end
+
+  defp context_section(context) do
+    [
+      work_item_context(context),
+      parent_context(context),
+      previous_context(context)
+    ]
+    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.join("\n\n")
+  end
+
+  defp work_item_context(context) do
+    case Map.get(context, "work_item", %{}) do
+      %{} = work_item when map_size(work_item) > 0 ->
+        [
+          "# Work Item",
+          maybe_line("ID", work_item["id"] || Map.get(context, "work_item_id")),
+          maybe_line("Title", work_item["title"]),
+          maybe_line("Status", work_item["status"]),
+          maybe_line("Body", work_item["body"])
+        ]
+        |> Enum.reject(&is_nil/1)
+        |> Enum.join("\n")
+
+      _other ->
+        ""
+    end
+  end
+
+  defp parent_context(context) do
+    case Map.get(context, "parent") do
+      %{} = parent when map_size(parent) > 0 ->
+        [
+          "# Parent Step",
+          maybe_line("Step", parent["step_id"]),
+          maybe_line("Result", parent["result"] || parent["gate_result"]),
+          maybe_line("Report", parent["report"])
+        ]
+        |> Enum.reject(&is_nil/1)
+        |> Enum.join("\n")
+
+      _other ->
+        ""
+    end
+  end
+
+  defp previous_context(context) do
+    previous_summary = Map.get(context, "previous_summary")
+    previous_result = Map.get(context, "previous_gate_result")
+
+    if present_string?(previous_summary) or present_string?(previous_result) do
+      [
+        "# Previous Iteration",
+        maybe_line("Result", previous_result),
+        maybe_line("Summary", previous_summary)
+      ]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.join("\n")
+    else
+      ""
+    end
+  end
+
+  defp context_updates(context) do
+    Map.get(context, "context_updates") ||
+      Map.get(context, "previous_report") ||
+      Map.get(context, "previous_summary") ||
+      ""
+  end
+
+  defp plan_section(nil), do: ""
+
+  defp plan_section(path) when is_binary(path) do
+    if File.regular?(path) do
+      File.read!(path)
+    else
+      ""
+    end
+  end
+
+  defp maybe_line(_label, value) when value in [nil, ""], do: nil
+  defp maybe_line(label, value), do: "- #{label}: #{value}"
+
+  defp put_default(map, _key, nil), do: map
+  defp put_default(map, _key, ""), do: map
+
+  defp put_default(map, key, value) do
+    case Map.get(map, key) do
+      current when current in [nil, ""] -> Map.put(map, key, value)
+      _current -> map
+    end
+  end
+
+  defp present_string?(value), do: is_binary(value) and value != ""
+
+  defp nested_get(map, path) when is_map(map) and is_list(path) do
+    Enum.reduce_while(path, map, fn key, acc ->
+      if is_map(acc) and Map.has_key?(acc, key) do
+        {:cont, Map.get(acc, key)}
+      else
+        {:halt, nil}
+      end
+    end)
+  end
+
+  defp nested_get(_map, _path), do: nil
+
+  defp worker_id(context),
+    do: Map.get(context, "worker_id") || nested_get(context, ["worker", "id"])
 
   defp work_item_id(context) do
-    Map.get(context, "work_item_id") || get_in(context, ["work_item", "id"])
+    Map.get(context, "work_item_id") ||
+      nested_get(context, ["work_item", "id"]) ||
+      nested_get(context, ["worker", "work_item_id"])
   end
 
   defp resolve_mapping(gate_result, result_mappings) do
@@ -817,12 +1094,17 @@ defmodule Indexer.Agents.Runner do
     end
   end
 
-  defp iteration_context(context, 0), do: Map.put(context, "iteration", 0)
+  defp iteration_context(context, 0) do
+    context
+    |> Map.put("iteration", 0)
+    |> Map.put("prev_iteration", -1)
+  end
 
   defp iteration_context(context, iteration) do
     Map.merge(context, %{
       "iteration" => iteration,
-      "previous_iteration" => iteration - 1
+      "previous_iteration" => iteration - 1,
+      "prev_iteration" => iteration - 1
     })
   end
 
