@@ -27,10 +27,12 @@ defmodule Indexer.State.Jsonl do
   def append!(path, %Event{} = event), do: append!(path, Event.to_map(event))
 
   def append!(path, record) when is_binary(path) and is_map(record) do
-    normalized = Indexer.State.Json.normalize(record)
-    File.mkdir_p!(Path.dirname(path))
-    File.write!(path, JSON.encode!(normalized) <> "\n", [:append])
-    normalized
+    :global.trans({__MODULE__, path}, fn ->
+      normalized = Indexer.State.Json.normalize(record)
+      File.mkdir_p!(Path.dirname(path))
+      File.write!(path, JSON.encode!(normalized) <> "\n", [:append])
+      normalized
+    end)
   end
 
   @doc """

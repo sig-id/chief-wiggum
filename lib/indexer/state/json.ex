@@ -15,6 +15,8 @@ defmodule Indexer.State.Json do
   def normalize(%NaiveDateTime{} = value), do: NaiveDateTime.to_iso8601(value)
   def normalize(%Date{} = value), do: Date.to_iso8601(value)
   def normalize(%Time{} = value), do: Time.to_iso8601(value)
+  def normalize(value) when is_boolean(value), do: value
+  def normalize(nil), do: nil
   def normalize(value) when is_atom(value), do: Atom.to_string(value)
   def normalize(value), do: value
 
