@@ -1,5 +1,7 @@
 {
   "defaults": {
+    "description": "Configured Indexer agent",
+    "required_paths": ["workspace"],
     "max_iterations": 20,
     "max_turns": 50,
     "timeout_seconds": 10800,
@@ -28,6 +30,7 @@
     },
     "general.task-summarizer": {
       "mode": "resume",
+      "session_from": "parent",
       "readonly": true,
       "valid_results": ["PASS", "SKIP"]
     },

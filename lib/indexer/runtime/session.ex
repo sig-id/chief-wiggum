@@ -13,6 +13,11 @@ defmodule Indexer.Runtime.Session do
     :status,
     :started_at,
     :last_event_at,
+    text: "",
+    raw_output: "",
+    events: [],
+    artifacts: [],
+    metadata: %{},
     supports_resume: false
   ]
 

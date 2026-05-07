@@ -13,7 +13,9 @@ Current implementation status:
 - Effect outbox record helpers.
 - Ordered-step pipeline schema validation.
 - Agent definition validation.
-- Runtime adapter behaviour and invocation/session structs.
+- Agent registry and runner that append `agent_runs.jsonl`.
+- Runtime facade plus generic executable adapter that append `agent_events.jsonl`.
+- Agent communication queries over `agent_runs.jsonl`.
 
 Run the current checks:
 
