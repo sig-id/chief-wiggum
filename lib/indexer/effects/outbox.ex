@@ -21,6 +21,29 @@ defmodule Indexer.Effects.Outbox do
   end
 
   @doc """
+  Folds effect events into the current effect projection.
+  """
+  @spec current(Path.t()) :: map()
+  def current(project_root) when is_binary(project_root) do
+    project_root
+    |> Jsonl.ledger_path(@stream)
+    |> Jsonl.read!()
+    |> Enum.reduce(%{}, &fold_effect_event/2)
+  end
+
+  @doc """
+  Returns pending effects in ledger order.
+  """
+  @spec pending(Path.t()) :: [map()]
+  def pending(project_root) when is_binary(project_root) do
+    project_root
+    |> current()
+    |> Map.values()
+    |> Enum.filter(&(&1["status"] == "pending"))
+    |> Enum.sort_by(& &1["id"])
+  end
+
+  @doc """
   Marks an effect completed.
   """
   @spec mark_completed!(Path.t(), Effect.t(), map(), keyword()) :: map()
@@ -56,4 +79,21 @@ defmodule Indexer.Effects.Outbox do
 
     Jsonl.append_event!(project_root, event)
   end
+
+  defp fold_effect_event(%{"type" => "effect.pending", "payload" => %{"effect" => effect}}, acc) do
+    Map.put(acc, effect["id"], effect)
+  end
+
+  defp fold_effect_event(%{"type" => type, "payload" => %{"effect" => effect} = payload}, acc)
+       when type in ["effect.completed", "effect.failed"] do
+    id = effect["id"]
+
+    Map.update(acc, id, effect, fn existing ->
+      existing
+      |> Indexer.Agents.Registry.deep_merge(effect)
+      |> Map.put("result", Map.drop(payload, ["effect"]))
+    end)
+  end
+
+  defp fold_effect_event(_event, acc), do: acc
 end

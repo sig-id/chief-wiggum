@@ -21,6 +21,7 @@ defmodule Indexer.Services.Schema do
       |> require_list("$.services", services)
       |> Kernel.++(service_errors(services))
       |> Kernel.++(dependency_errors(services))
+      |> Kernel.++(dependency_cycle_errors(services))
 
     case errors do
       [] -> :ok
@@ -162,6 +163,42 @@ defmodule Indexer.Services.Schema do
   end
 
   defp dependency_errors(_), do: []
+
+  defp dependency_cycle_errors(services) when is_list(services) do
+    graph =
+      services
+      |> Enum.filter(&is_map/1)
+      |> Map.new(fn service ->
+        {Map.get(service, "id"), service |> Map.get("depends_on", []) |> List.wrap()}
+      end)
+
+    graph
+    |> Map.keys()
+    |> Enum.flat_map(&detect_cycle(graph, &1, [], MapSet.new()))
+    |> Enum.uniq()
+  end
+
+  defp dependency_cycle_errors(_), do: []
+
+  defp detect_cycle(graph, service_id, stack, visited) do
+    cond do
+      not is_binary(service_id) ->
+        []
+
+      service_id in stack ->
+        [error("$.services.#{service_id}.depends_on", "dependency cycle detected")]
+
+      MapSet.member?(visited, service_id) ->
+        []
+
+      true ->
+        graph
+        |> Map.get(service_id, [])
+        |> Enum.flat_map(
+          &detect_cycle(graph, &1, [service_id | stack], MapSet.put(visited, service_id))
+        )
+    end
+  end
 
   defp service_ids(services) do
     services

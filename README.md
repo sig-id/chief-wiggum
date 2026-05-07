@@ -16,6 +16,10 @@ Current implementation status:
 - Agent registry and runner that append `agent_runs.jsonl`.
 - Runtime facade plus generic executable adapter that append `agent_events.jsonl`.
 - Agent communication queries over `agent_runs.jsonl`.
+- Service loader, scheduler, runner, daemon, and JSONL state projection.
+- Work item, worker lifecycle, and change-set ledgers with merge planning.
+- Control-branch snapshot exporter under `.indexer/control`.
+- Disposable projection materializer under `.indexer/state/projections`.
 
 Run the current checks:
 
